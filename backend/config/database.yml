@@ -1,0 +1,20 @@
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  host: <%= ENV.fetch("DATABASE_HOST") { 'localhost' } %>
+  username: <%= ENV.fetch("DATABASE_USER") { 'postgres' } %>
+  password: <%= ENV.fetch("DATABASE_PASSWORD") { 'password' } %>
+  database: <%= ENV.fetch("DATABASE_NAME") { "emotional_echo_#{Rails.env}" } %>
+
+development:
+  <<: *default
+  # database: emotional_echo_development # 環境変数から取得するため削除
+
+test:
+  <<: *default
+  database: emotional_echo_test
+
+production:
+  <<: *default
+  url: <%= ENV['DATABASE_URL'] %> # 本番環境ではDATABASE_URLを使うのが一般的 

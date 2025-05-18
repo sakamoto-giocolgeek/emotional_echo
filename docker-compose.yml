@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15 # 必要であれば 17 に戻す
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: emotional_echo_development
+    ports:
+      - "5433:5432"
+
+  web: # Rails API
+    build:
+      context: .
+      dockerfile: Dockerfile # ルートのDockerfileを使用
+    # APIサーバーの起動コマンド (DockerfileのCMDで指定)
+    # command: bundle exec puma -C config/puma.rb
+    volumes:
+      # ホストの backend ディレクトリをコンテナの /app にマウント
+      - ./backend:/app
+      # bundle_cache: /usr/local/bundle/ # 必要ならキャッシュ設定
+    ports:
+      - "3001:3000" # ホストポートを 3001 に変更
+    depends_on:
+      - db
+    env_file:
+      - .env # プロジェクトルートの .env を読み込む
+    environment:
+      RAILS_ENV: development
+      RAILS_LOG_TO_STDOUT: "true"
+      DATABASE_HOST: db
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: password
+      DATABASE_NAME: emotional_echo_development
+      # OPENAI_API_KEY: ${OPENAI_API_KEY} # env_file を使う場合は通常不要だが、明示的に渡すことも可能
+      # Action Cable WebSocketを受け付けるホスト (コンテナ内からはlocalhost)
+      # RAILS_SERVE_STATIC_FILES: "true" # APIモードでは通常不要
+      # REDIS_URL: redis://redis:6379/1 # Redisを使う場合
+
+  frontend: # React Dev Server
+    build:
+      context: ./frontend # frontend ディレクトリをビルドコンテキストに
+      dockerfile: Dockerfile # frontend/Dockerfile を使用
+    volumes:
+      # ホストの frontend ディレクトリをコンテナの /app にマウント
+      - ./frontend:/app
+      # node_modules はコンテナ内のものを使う (マウントしない)
+      - /app/node_modules
+    ports:
+      - "5173:5173" # Vite開発サーバー
+    environment:
+      NODE_ENV: development
+      # Rails API と WebSocket のエンドポイントのポートを 3001 に変更
+      VITE_API_URL: http://localhost:3001/api/v1
+      VITE_WS_URL: ws://localhost:3001/cable
+    depends_on:
+      - web # APIサーバーが起動してからフロントエンドを開始
+
+  # redis: # Action CableでRedisを使う場合
+  #   image: redis:alpine
+  #   volumes:
+  #     - redis_data:/data
+  #   ports:
+  #     - "6379:6379"
+
+volumes:
+  postgres_data:
+  # bundle_cache:
+  # redis_data:
